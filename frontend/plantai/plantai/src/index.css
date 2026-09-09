@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@tailwind base; @tailwind components; @tailwind utilities;
+:root{font-family:'DM Sans',sans-serif;color:#17261d;background:#f5f7ef;font-synthesis:none;text-rendering:optimizeLegibility}
+body{margin:0;min-width:320px;background:radial-gradient(circle at 80% -10%,rgba(164,207,142,.25),transparent 30%),#f5f7ef}
+*{box-sizing:border-box} button,input,textarea{font:inherit} ::selection{background:#cce7bb;color:#173520}
+@layer components{
+ .font-display{font-family:'Manrope',sans-serif}.card{ @apply rounded-[28px] border border-[#dfe8d8] bg-white shadow-soft; }.muted{ @apply text-[#718073]; }
+ .btn-primary{ @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-[#173b27] px-5 py-3.5 font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#235438] hover:shadow-glow active:translate-y-0; }
+ .btn-secondary{ @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-[#dce6d8] bg-white px-5 py-3.5 font-semibold text-[#24412e] transition duration-300 hover:-translate-y-0.5 hover:border-[#a9c99d] hover:bg-[#f7fbf4]; }
+ .pill{ @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold; }
+}
+.leaf-grid{background-image:linear-gradient(rgba(44,77,48,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(44,77,48,.05) 1px,transparent 1px);background-size:28px 28px}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#b7f19b,transparent);box-shadow:0 0 18px #a9ed8d;animation:scan 2.3s ease-in-out infinite}
+@keyframes scan{0%,100%{top:5%}50%{top:94%}}
+.float{animation:float 5s ease-in-out infinite}@keyframes float{50%{transform:translateY(-8px)}}
+.fade-up{animation:fadeUp .55s ease both}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pulse-ring{animation:pulseRing 2.2s infinite}@keyframes pulseRing{50%{box-shadow:0 0 0 12px rgba(120,181,104,.05)}}
