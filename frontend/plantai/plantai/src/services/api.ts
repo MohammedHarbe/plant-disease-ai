@@ -1,0 +1,6 @@
+import {cnnDemo,yoloDemo} from '../data/mock';
+import type {CnnResult,YoloResult} from '../types';
+const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+export async function predictYolo(imageUrl:string):Promise<YoloResult>{await sleep(1800);return {...yoloDemo,imageUrl};}
+export async function predictCnn(imageUrl:string):Promise<CnnResult>{await sleep(1600);return {...cnnDemo,imageUrl};}
+export async function askPlantAI(message:string):Promise<string>{await sleep(700);const m=message.toLowerCase();if(m.includes('treat'))return 'For early blight, remove badly affected leaves, improve airflow around the plant, avoid overhead watering, and keep foliage dry. A locally approved fungicide may help when used according to its label.';if(m.includes('spread'))return 'Early blight spreads mainly through spores moved by rain splash, irrigation, wind and contaminated plant debris. Clean tools and remove infected material promptly.';if(m.includes('water'))return 'Water deeply at the soil line when the top 2–3 cm of soil feels dry. Morning watering is ideal because leaves have more time to dry.';return 'Your scan points to Tomato Early Blight with high confidence. I can explain symptoms, treatment, prevention, watering, or how the YOLO and CNN predictions differ.';}
