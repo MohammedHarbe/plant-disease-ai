@@ -17,7 +17,22 @@ TODO: Add these endpoints (do not implement yet):
   3. POST /assistant/ask - Call ai-assistant.fake_assistant.answer_question()
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add project root to path so we can import vision_engine and ai-assistant
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from fastapi import FastAPI
+
+# Import the fake model functions
+try:
+    from vision_engine.fake_yolo import predict_yolo
+except ImportError as e:
+    print(f"Warning: Could not import predict_yolo: {e}")
+    predict_yolo = None
 
 # Create FastAPI application
 app = FastAPI(
@@ -42,6 +57,15 @@ app = FastAPI(
 #     - Return detections with bounding boxes
 #     """
 #     pass
+
+@app.get("/predict/yolo")
+def test_yolo():
+    """Test endpoint for YOLO prediction."""
+    if predict_yolo is None:
+        return {"error": "YOLO model not loaded", "status": "import failed"}
+    
+    result = predict_yolo("test_image.jpg")
+    return result
 
 
 # TODO: @app.post("/predict/cnn")
