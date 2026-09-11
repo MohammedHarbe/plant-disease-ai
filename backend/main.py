@@ -20,6 +20,7 @@ TODO: Add these endpoints (do not implement yet):
 import sys
 import os
 import tempfile
+import base64
 from pathlib import Path
 
 # Add project root to path so we can import vision_engine and ai-assistant
@@ -133,6 +134,11 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
             tmp_path = tmp.name
 
         result = predict_cnn(tmp_path)
+        # Keep the original upload available to the frontend result view.
+        result["imageUrl"] = (
+            f"data:{file.content_type};base64,"
+            f"{base64.b64encode(contents).decode('ascii')}"
+        )
         return result
 
     except ValueError:

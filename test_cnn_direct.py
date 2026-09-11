@@ -16,7 +16,7 @@ print("=" * 60)
 print("Testing CNN Model Directly")
 print("=" * 60)
 
-result = predict_cnn("backend/test_image.jpg")
+result = predict_cnn("_test_green.jpg")
 
 print("\n[SUCCESS] CNN prediction returned:")
 print()
