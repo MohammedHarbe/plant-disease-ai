@@ -29,6 +29,9 @@ sys.path.insert(0, str(project_root))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from pydantic import BaseModel
+from google.genai import types
 
 # Import the fake model functions
 try:
@@ -73,6 +76,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Only image types the CNN pipeline (PIL) can reliably decode.
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 
@@ -93,14 +97,47 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 #     """
 #     pass
 
-@app.get("/predict/yolo")
-def test_yolo():
-    """Test endpoint for YOLO prediction."""
+SYSTEM_MESSAGE_PATH = project_root / "ai-assistant" / "system_message.txt"
+
+@app.post("/predict/yolo")
+async def predict_yolo_endpoint(file: UploadFile = File(...)) -> dict:
+    """Run YOLO detection on an uploaded plant image."""
     if predict_yolo is None:
-        return {"error": "YOLO model not loaded", "status": "import failed"}
-    
-    result = predict_yolo("test_image.jpg")
-    return result
+        raise HTTPException(status_code=503, detail="YOLO model is not available on the server.")
+
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image (jpeg, png, webp, or bmp).")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    suffix = Path(file.filename or "").suffix or ".jpg"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        result = predict_yolo(tmp_path)
+        return {
+            "plant": result["plant"],
+            "disease": result["disease"],
+            "confidence": result["confidence"],
+            "severity": result["severity"],
+            "objectsDetected": result["objects_detected"],
+            "healthyRegions": result["healthy_regions"],
+            "diseasedRegions": result["diseased_regions"],
+            "detections": result["detections"],
+            "imageUrl": f"data:{file.content_type};base64,{base64.b64encode(contents).decode('ascii')}",
+            "inferenceMs": 0,
+        }
+    except Exception as error:
+        print(f"YOLO prediction error: {error}")
+        raise HTTPException(status_code=500, detail="YOLO prediction failed. Please try again.")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.post("/predict/cnn")
@@ -157,18 +194,47 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
             os.remove(tmp_path)
 
 
-# TODO: @app.post("/assistant/ask")
-# async def ask_assistant(question: str, context: dict = None) -> dict:
-#     """
-#     AI Assistant endpoint.
-#     
-#     Will eventually:
-#     - Accept a question about plant health
-#     - Optionally accept context from previous predictions
-#     - Call ai_assistant.fake_assistant.answer_question()
-#     - Return assistant response
-#     """
-#     pass
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+class ChatRequest(BaseModel):
+    message: str
+    context: dict | None = None
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    if not os.getenv("GEMINI_API_KEY"):
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured on the server.")
+
+    print("Sending request to Gemini...")
+    try:
+        context_text = ""
+        if request.context:
+            context_text = (
+                "\n\nThe user is asking about this latest plant analysis result. "
+                f"Use it as factual context:\n{request.context}"
+            )
+
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=f"User question: {request.message.strip()}{context_text}",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_MESSAGE_PATH.read_text(encoding="utf-8"),
+                temperature=0.2,
+                max_output_tokens=200,
+            )
+        )
+    except Exception as error:
+        print(f"Gemini chat error: {error}")
+        raise HTTPException(status_code=502, detail="The AI assistant is temporarily unavailable.")
+
+    print("Gemini response received!")    
+
+    return {"response": response.text or "I could not generate a response. Please try again."}
 
 
 # ============================================================================
