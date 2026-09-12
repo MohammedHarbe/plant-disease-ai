@@ -29,6 +29,8 @@ sys.path.insert(0, str(project_root))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from google.genai import types
 
 # Import the fake model functions
 try:
