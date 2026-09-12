@@ -17,3 +17,9 @@ npm run dev
 ```
 
 CNN inference uses `best_model.keras` through `vision_engine/linking_cnn.py`.
+
+YOLO model: `yolo.pt`
+
+YOLO inference: `vision_engine/linking_yolo.py`
+
+CNN inference: `vision_engine/linking_cnn.py`

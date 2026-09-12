@@ -1,4 +1,3 @@
-import {yoloDemo} from '../data/mock';
 import type {CnnResult,YoloResult} from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
@@ -9,10 +8,16 @@ export async function predictYolo(imageUrl:string):Promise<YoloResult>{
     const blob=await fetch(imageUrl).then(r=>r.blob());
     formData.append('file',blob);
     const response=await fetch(`${API_URL}/predict/yolo`,{method:'POST',body:formData});
-    if(!response.ok)throw new Error('YOLO prediction failed');
-    return await response.json();
-  }catch{
-    return yoloDemo;
+    const body=await response.json().catch(()=>null);
+    if(!response.ok){
+      const message=body?.detail||`YOLO prediction failed (${response.status})`;
+      console.error('predictYolo error:',message);
+      throw new Error(message);
+    }
+    return body as YoloResult;
+  }catch(error){
+    console.error('predictYolo error:',error);
+    throw error instanceof Error ? error : new Error('YOLO prediction failed.');
   }
 }
 

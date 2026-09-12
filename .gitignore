@@ -9,5 +9,9 @@ __pycache__/
 node_modules/
 frontend/**/dist/
 
+# Temporary test images
+test/_test_green.jpg
+test/test_image.jpg
+
 # Local model and editor files
 .vscode/
