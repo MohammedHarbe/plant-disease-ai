@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 # Now import
@@ -16,7 +16,7 @@ print("=" * 60)
 print("Testing CNN Model Directly")
 print("=" * 60)
 
-result = predict_cnn("_test_green.jpg")
+result = predict_cnn(str(Path(__file__).with_name("_test_green.jpg")))
 
 print("\n[SUCCESS] CNN prediction returned:")
 print()
