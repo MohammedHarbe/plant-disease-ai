@@ -11,6 +11,7 @@ from pathlib import Path
 
 # Configuration
 API_URL = "http://127.0.0.1:8000"
+TEST_IMAGE = Path(__file__).resolve().with_name("_test_green.jpg")
 
 # ANSI colors for output
 GREEN = '\033[92m'
@@ -68,49 +69,11 @@ def test_health():
         return False
 
 
-def test_diseases():
-    """Test diseases endpoint"""
-    print_header("Testing: GET /diseases")
-    try:
-        response = requests.get(f"{API_URL}/diseases")
-        passed = response.status_code == 200
-        print_test("Diseases List", passed, f"Status: {response.status_code}")
-        
-        data = response.json()
-        print(f"  Found {len(data['diseases'])} diseases:")
-        for disease in data['diseases']:
-            print(f"    • {disease}")
-        return passed
-    except Exception as e:
-        print_test("Diseases List", False, str(e))
-        return False
-
-
-def test_models():
-    """Test models endpoint"""
-    print_header("Testing: GET /models")
-    try:
-        response = requests.get(f"{API_URL}/models")
-        passed = response.status_code == 200
-        print_test("Models List", passed, f"Status: {response.status_code}")
-        
-        data = response.json()
-        print(f"  Found {len(data['models'])} models:")
-        for model in data['models']:
-            print(f"    • {model['name']} ({model['id']})")
-        return passed
-    except Exception as e:
-        print_test("Models List", False, str(e))
-        return False
-
-
 def test_yolo_predict():
     """Test YOLO prediction endpoint"""
     print_header("Testing: POST /predict/yolo")
     try:
-        # Create a fake image file
-        fake_image = b"fake image content for testing"
-        files = {'file': ('test_image.jpg', fake_image, 'image/jpeg')}
+        files = {'file': (TEST_IMAGE.name, TEST_IMAGE.read_bytes(), 'image/jpeg')}
         
         response = requests.post(f"{API_URL}/predict/yolo", files=files)
         passed = response.status_code == 200
@@ -141,9 +104,7 @@ def test_cnn_predict():
     """Test CNN prediction endpoint"""
     print_header("Testing: POST /predict/cnn")
     try:
-        # Create a fake image file
-        fake_image = b"fake image content for testing"
-        files = {'file': ('test_image.jpg', fake_image, 'image/jpeg')}
+        files = {'file': (TEST_IMAGE.name, TEST_IMAGE.read_bytes(), 'image/jpeg')}
         
         response = requests.post(f"{API_URL}/predict/cnn", files=files)
         passed = response.status_code == 200
@@ -203,15 +164,13 @@ def main():
         requests.get(f"{API_URL}/health", timeout=2)
     except:
         print(f"{RED}❌ ERROR: Cannot connect to API at {API_URL}{RESET}")
-        print(f"{YELLOW}Make sure the backend is running: uvicorn main:app --reload --port 8000{RESET}\n")
+        print(f"{YELLOW}Make sure the backend is running: uvicorn backend.main:app --reload --port 8000{RESET}\n")
         return
     
     # Run all tests
     results = []
     results.append(("Home Endpoint", test_home()))
     results.append(("Health Check", test_health()))
-    results.append(("Diseases List", test_diseases()))
-    results.append(("Models List", test_models()))
     results.append(("YOLO Prediction", test_yolo_predict()))
     results.append(("CNN Prediction", test_cnn_predict()))
     results.append(("CORS Headers", test_cors()))

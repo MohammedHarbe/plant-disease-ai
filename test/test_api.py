@@ -48,6 +48,7 @@ def test_yolo_accepts_real_image():
 
 def test_yolo_rejects_corrupt_image():
     response = request(
+        "POST",
         "/predict/yolo",
         files={"file": ("bad.jpg", io.BytesIO(b"not an image"), "image/jpeg")},
     )
