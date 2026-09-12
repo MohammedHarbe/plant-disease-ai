@@ -1,20 +1,7 @@
-"""
-FastAPI application entry point for Plant Disease AI.
+"""FastAPI API gateway for Plant Disease AI.
 
-This module defines the FastAPI application and will eventually contain
-HTTP endpoints that call functions from the vision-engine and ai-assistant subsystems.
-
-ARCHITECTURE NOTE:
-- FastAPI here is ONLY the API layer/gateway
-- The vision-engine and ai-assistant are independent subsystems in their own folders
-- We will later import from those modules and call their functions in these endpoints
-- Do NOT put model implementation logic here
-- Do NOT put AI logic here
-
-TODO: Add these endpoints (do not implement yet):
-    1. POST /predict/yolo - Call vision_engine.linking_yolo.predict_yolo()
-    2. POST /predict/cnn - Call vision_engine.linking_cnn.predict_cnn()
-  3. POST /assistant/ask - Call ai-assistant.fake_assistant.answer_question()
+The vision modules own model loading and inference. This module handles HTTP
+uploads, temporary files, response shaping, and errors.
 """
 
 import sys
@@ -33,7 +20,7 @@ from google import genai
 from pydantic import BaseModel
 from google.genai import types
 
-# Import the vision model functions
+# Import the independent vision model functions.
 try:
     from vision_engine.linking_yolo import predict_yolo
 except ImportError as e:
@@ -81,22 +68,6 @@ app.add_middleware(
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 
 
-# ============================================================================
-# FUTURE ENDPOINTS (Do NOT implement yet)
-# ============================================================================
-
-# TODO: @app.post("/predict/yolo")
-# async def predict_yolo(file: UploadFile = File(...)) -> dict:
-#     """
-#     YOLO object detection endpoint.
-#     
-#     Will eventually:
-#     - Accept an image file
-#     - Call vision_engine.linking_yolo.predict_yolo()
-#     - Return detections with bounding boxes
-#     """
-#     pass
-
 SYSTEM_MESSAGE_PATH = project_root / "ai-assistant" / "system_message.txt"
 
 @app.post("/predict/yolo")
@@ -121,17 +92,20 @@ async def predict_yolo_endpoint(file: UploadFile = File(...)) -> dict:
 
         result = predict_yolo(tmp_path)
         return {
-            "plant": result["plant"],
-            "disease": result["disease"],
-            "confidence": result["confidence"],
-            "severity": result["severity"],
+            **result,
             "objectsDetected": result["objects_detected"],
             "healthyRegions": result["healthy_regions"],
             "diseasedRegions": result["diseased_regions"],
-            "detections": result["detections"],
-            "imageUrl": f"data:{file.content_type};base64,{base64.b64encode(contents).decode('ascii')}",
-            "inferenceMs": 0,
+            "imageUrl": (
+                f"data:{file.content_type};base64,"
+                f"{base64.b64encode(contents).decode('ascii')}"
+            ),
         }
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Uploaded file could not be read as an image.")
+    except FileNotFoundError:
+        print("YOLO prediction error: model or image file not found")
+        raise HTTPException(status_code=503, detail="YOLO model is not available on the server.")
     except Exception as error:
         print(f"YOLO prediction error: {error}")
         raise HTTPException(status_code=500, detail="YOLO prediction failed. Please try again.")
