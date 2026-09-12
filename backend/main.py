@@ -10,15 +10,14 @@ import tempfile
 import base64
 from pathlib import Path
 
-# Add project root to path so we can import vision_engine and ai-assistant
+# Add the repository and assistant subsystem to the import path.
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "ai-assistant"))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from google import genai
 from pydantic import BaseModel
-from google.genai import types
 
 # Import the independent vision model functions.
 try:
@@ -32,6 +31,8 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import predict_cnn: {e}")
     predict_cnn = None
+
+from gemini_client import generate_response
 
 # Create FastAPI application
 app = FastAPI(
@@ -67,8 +68,6 @@ app.add_middleware(
 # Only image types the CNN pipeline (PIL) can reliably decode.
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 
-
-SYSTEM_MESSAGE_PATH = project_root / "ai-assistant" / "system_message.txt"
 
 @app.post("/predict/yolo")
 async def predict_yolo_endpoint(file: UploadFile = File(...)) -> dict:
@@ -168,13 +167,6 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
             os.remove(tmp_path)
 
 
-client = (
-    genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    if os.getenv("GEMINI_API_KEY")
-    else None
-)
-
-
 class ChatRequest(BaseModel):
     message: str
     context: dict | None = None
@@ -185,34 +177,12 @@ def chat(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    if client is None:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured on the server.")
-
-    print("Sending request to Gemini...")
     try:
-        context_text = ""
-        if request.context:
-            context_text = (
-                "\n\nThe user is asking about this latest plant analysis result. "
-                f"Use it as factual context:\n{request.context}"
-            )
-
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
-            contents=f"User question: {request.message.strip()}{context_text}",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_MESSAGE_PATH.read_text(encoding="utf-8"),
-                temperature=0.2,
-                max_output_tokens=200,
-            )
-        )
-    except Exception as error:
-        print(f"Gemini chat error: {error}")
+        answer = generate_response(request.message.strip(), request.context)
+    except Exception:
         raise HTTPException(status_code=502, detail="The AI assistant is temporarily unavailable.")
 
-    print("Gemini response received!")    
-
-    return {"response": response.text or "I could not generate a response. Please try again."}
+    return {"response": answer}
 
 
 # ============================================================================
