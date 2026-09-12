@@ -161,7 +161,7 @@ The frontend (React/TypeScript app) is configured to use these endpoints:
 File: `frontend/plantai/plantai/src/services/api.ts`
 
 ```typescript
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export async function predictYolo(imageUrl: string): Promise<YoloResult>
 export async function predictCnn(imageUrl: string): Promise<CnnResult>
@@ -171,7 +171,7 @@ export async function askPlantAI(message: string): Promise<string>
 ### **Environment Variables**
 Create `.env` file in frontend directory:
 ```
-REACT_APP_API_URL=http://127.0.0.1:8000
+VITE_API_URL=http://127.0.0.1:8000
 ```
 
 ---
@@ -356,10 +356,9 @@ plant-disease-ai/
 
 ## 🎯 Next Steps
 
-1. **Implement Real ML Models**
-   - Replace mock predictions with actual YOLO model
-   - Replace mock predictions with actual CNN model
-   - Use TensorFlow, PyTorch, or OpenCV
+1. **Model maintenance**
+  - CNN inference is implemented in `vision_engine/linking_cnn.py` and loads `best_model.keras`
+  - YOLO inference is implemented in `vision_engine/linking_yolo.py`
 
 2. **Database Integration**
    - Store prediction history
