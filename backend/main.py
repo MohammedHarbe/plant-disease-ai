@@ -35,13 +35,13 @@ from google.genai import types
 
 # Import the fake model functions
 try:
-    from vision_engine.fake_yolo import predict_yolo
+    from test.fake_yolo import predict_yolo
 except ImportError as e:
     print(f"Warning: Could not import predict_yolo: {e}")
     predict_yolo = None
 
 try:
-    from vision_engine.fake_cnn import predict_cnn
+    from test.fake_cnn import predict_cnn
 except ImportError as e:
     print(f"Warning: Could not import predict_cnn: {e}")
     predict_cnn = None
