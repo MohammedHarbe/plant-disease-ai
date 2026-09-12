@@ -97,7 +97,7 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 #     """
 #     pass
 
-SYSTEM_MESSAGE_PATH = "system_message.txt"
+SYSTEM_MESSAGE_PATH = project_root / "ai-assistant" / "system_message.txt"
 
 @app.get("/predict/yolo")
 def test_yolo():
@@ -170,28 +170,32 @@ class ChatRequest(BaseModel):
     message: str
 
 
-@app.get("/")
-def home():
-    return {"message": "Plant Assistant is running"}
-
-
 @app.post("/chat")
 def chat(request: ChatRequest):
-    print("Sending request to Gemini...")
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
-        contents=request.message,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_MESSAGE_PATH ,
-            temperature=0.2,
-            max_output_tokens=200,
+    if not os.getenv("GEMINI_API_KEY"):
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured on the server.")
+
+    print("Sending request to Gemini...")
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=request.message.strip(),
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_MESSAGE_PATH.read_text(encoding="utf-8"),
+                temperature=0.2,
+                max_output_tokens=200,
+            )
         )
-    )
+    except Exception as error:
+        print(f"Gemini chat error: {error}")
+        raise HTTPException(status_code=502, detail="The AI assistant is temporarily unavailable.")
 
     print("Gemini response received!")    
 
-    return {"response": response.text}
+    return {"response": response.text or "I could not generate a response. Please try again."}
 
 
 # ============================================================================

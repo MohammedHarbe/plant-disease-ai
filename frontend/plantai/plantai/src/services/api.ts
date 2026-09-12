@@ -31,21 +31,19 @@ export async function predictCnn(imageUrl:string):Promise<CnnResult>{
 }
 
 export async function askPlantAI(question:string):Promise<string>{
-  const responses:Record<string,string>={
-    'what is this disease?':'Early Blight is a fungal disease caused by Alternaria solani. It typically appears as concentric brown spots with a target-like pattern on tomato leaves. It thrives in warm, humid conditions and can significantly reduce fruit yield if left untreated.',
-    'how do i treat it?':'Treatment options include: 1) Remove infected leaves promptly, 2) Apply fungicides like chlorothalonil or mancozeb weekly, 3) Improve air circulation by pruning, 4) Water at the base of the plant to keep foliage dry, 5) Consider resistant tomato varieties.',
-    'how can i prevent it?':'Prevention strategies: 1) Plant disease-resistant varieties, 2) Space plants for good air flow, 3) Water early in the morning at soil level, 4) Remove lower leaves once plant is established, 5) Practice crop rotation (3-4 year gap), 6) Mulch to prevent soil splash, 7) Monitor regularly for early signs.',
-    'is my plant healthy?':'Based on the analysis, your plant shows signs of Early Blight disease with a confidence of 94.7%. The diseased regions need attention, but treatment can be effective if started early. I recommend implementing the prevention and treatment strategies mentioned above.'
-  };
-  
-  const lowerQuestion=question.toLowerCase();
-  for(const[key,value]of Object.entries(responses)){
-    if(lowerQuestion.includes(key.replace(/[?]/g,''))){
-      return value;
-    }
+  const response=await fetch(`${API_URL}/chat`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({message:question}),
+  });
+  const body=await response.json().catch(()=>null);
+  if(!response.ok){
+    throw new Error(body?.detail||`Chat request failed (${response.status})`);
   }
-  
-  return 'I can help you understand your plant health diagnosis. Ask me about the disease, treatment options, prevention strategies, or plant health status.';
+  if(typeof body?.response!=='string'){
+    throw new Error('The chat service returned an invalid response.');
+  }
+  return body.response;
 }
 
 export async function imageUrlToBlob(url:string):Promise<Blob>{
