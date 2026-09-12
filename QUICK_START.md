@@ -17,8 +17,8 @@ The backend has been completely updated to match the React frontend's API expect
 
 ✅ **Frontend Integration**
 - Updated `frontend/plantai/plantai/src/services/api.ts`
-- Now calls real backend endpoints (with fallback to mock)
-- Supports `REACT_APP_API_URL` environment variable
+- Calls the backend prediction endpoints
+- Supports the Vite `VITE_API_URL` environment variable
 
 ---
 
@@ -196,9 +196,9 @@ curl -X POST \
 
 ## 🛠️ Next Steps
 
-1. **Integrate Real ML Models**
-   - Replace mock predictions with actual YOLO model
-   - Replace mock predictions with actual CNN model
+1. **Model files**
+  - CNN inference uses `best_model.keras` through `vision_engine/linking_cnn.py`
+  - YOLO currently uses `vision_engine/linking_yolo.py`
 
 2. **Frontend Configuration**
    - Create `.env` file in frontend with API URL

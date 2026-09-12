@@ -1,0 +1,13 @@
+
+# Python
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Frontend
+node_modules/
+frontend/**/dist/
+
+# Local model and editor files
+.vscode/
