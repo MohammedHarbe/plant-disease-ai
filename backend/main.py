@@ -30,6 +30,7 @@ sys.path.insert(0, str(project_root))
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
+from pydantic import BaseModel
 from google.genai import types
 
 # Import the fake model functions
@@ -74,6 +75,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Only image types the CNN pipeline (PIL) can reliably decode.
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
@@ -159,18 +161,41 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
             os.remove(tmp_path)
 
 
-# TODO: @app.post("/assistant/ask")
-# async def ask_assistant(question: str, context: dict = None) -> dict:
-#     """
-#     AI Assistant endpoint.
-#     
-#     Will eventually:
-#     - Accept a question about plant health
-#     - Optionally accept context from previous predictions
-#     - Call ai_assistant.fake_assistant.answer_question()
-#     - Return assistant response
-#     """
-#     pass
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+@app.get("/")
+def home():
+    return {"message": "Plant Assistant is running"}
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    print("Sending request to Gemini...")
+
+    response = client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=request.message,
+        config=types.GenerateContentConfig(
+            system_instruction="""
+You are a plant care expert.
+Answer only plant-related questions.
+Do not answer unrelated topics.
+Keep replies short, practical, and helpful.
+If the user asks something unrelated, say: "I'm sorry, I can only provide plant care advice."
+""",
+            temperature=0.2,
+            max_output_tokens=200,
+        )
+    )
+
+    print("Gemini response received!")    
+
+    return {"response": response.text}
 
 
 # ============================================================================
