@@ -168,7 +168,11 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
             os.remove(tmp_path)
 
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = (
+    genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    if os.getenv("GEMINI_API_KEY")
+    else None
+)
 
 
 class ChatRequest(BaseModel):
@@ -181,7 +185,7 @@ def chat(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    if not os.getenv("GEMINI_API_KEY"):
+    if client is None:
         raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured on the server.")
 
     print("Sending request to Gemini...")
