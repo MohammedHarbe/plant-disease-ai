@@ -6,7 +6,7 @@ subsystems through HTTP endpoints.
 
 ARCHITECTURE:
 - FastAPI is ONLY the HTTP API layer
-- Vision engine subsystem (fake_yolo.py, fake_cnn.py) is independent
+- Vision engine subsystem (linking_yolo.py, linking_cnn.py) is independent
 - AI assistant subsystem (fake_assistant.py) is independent
 - This module imports and calls functions from those subsystems
 

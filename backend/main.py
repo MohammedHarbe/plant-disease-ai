@@ -12,8 +12,8 @@ ARCHITECTURE NOTE:
 - Do NOT put AI logic here
 
 TODO: Add these endpoints (do not implement yet):
-  1. POST /predict/yolo - Call vision-engine.fake_yolo.predict_yolo()
-  2. POST /predict/cnn - Call vision-engine.fake_cnn.predict_cnn()
+    1. POST /predict/yolo - Call vision_engine.linking_yolo.predict_yolo()
+    2. POST /predict/cnn - Call vision_engine.linking_cnn.predict_cnn()
   3. POST /assistant/ask - Call ai-assistant.fake_assistant.answer_question()
 """
 
@@ -33,15 +33,15 @@ from google import genai
 from pydantic import BaseModel
 from google.genai import types
 
-# Import the fake model functions
+# Import the vision model functions
 try:
-    from test.fake_yolo import predict_yolo
+    from vision_engine.linking_yolo import predict_yolo
 except ImportError as e:
     print(f"Warning: Could not import predict_yolo: {e}")
     predict_yolo = None
 
 try:
-    from test.fake_cnn import predict_cnn
+    from vision_engine.linking_cnn import predict_cnn
 except ImportError as e:
     print(f"Warning: Could not import predict_cnn: {e}")
     predict_cnn = None
@@ -92,7 +92,7 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 #     
 #     Will eventually:
 #     - Accept an image file
-#     - Call vision_engine.fake_yolo.predict_yolo()
+#     - Call vision_engine.linking_yolo.predict_yolo()
 #     - Return detections with bounding boxes
 #     """
 #     pass
@@ -147,7 +147,7 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
 
     Accepts a multipart/form-data image upload (field name "file", which is
     what frontend/.../services/api.ts sends), saves it to a temporary file,
-    calls vision_engine.fake_cnn.predict_cnn() on that path, and returns the
+    calls vision_engine.linking_cnn.predict_cnn() on that path, and returns the
     resulting dict as JSON - shaped to match the frontend's CnnResult type.
     """
     if predict_cnn is None:

@@ -63,7 +63,7 @@ CLASS_NAMES = [
 # From model.input_shape: (None, 224, 224, 3)
 IMG_SIZE = (224, 224)
 
-# vision_engine/fake_cnn.py -> parent (vision_engine/) -> parent (project root)
+# vision_engine/linking_cnn.py -> parent (vision_engine/) -> parent (project root)
 _MODEL_PATH = Path(__file__).resolve().parent.parent / "best_model.keras"
 
 # Module-level cache so the (large) model is loaded from disk only once,
