@@ -99,14 +99,45 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 
 SYSTEM_MESSAGE_PATH = project_root / "ai-assistant" / "system_message.txt"
 
-@app.get("/predict/yolo")
-def test_yolo():
-    """Test endpoint for YOLO prediction."""
+@app.post("/predict/yolo")
+async def predict_yolo_endpoint(file: UploadFile = File(...)) -> dict:
+    """Run YOLO detection on an uploaded plant image."""
     if predict_yolo is None:
-        return {"error": "YOLO model not loaded", "status": "import failed"}
-    
-    result = predict_yolo("test_image.jpg")
-    return result
+        raise HTTPException(status_code=503, detail="YOLO model is not available on the server.")
+
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image (jpeg, png, webp, or bmp).")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    suffix = Path(file.filename or "").suffix or ".jpg"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        result = predict_yolo(tmp_path)
+        return {
+            "plant": result["plant"],
+            "disease": result["disease"],
+            "confidence": result["confidence"],
+            "severity": result["severity"],
+            "objectsDetected": result["objects_detected"],
+            "healthyRegions": result["healthy_regions"],
+            "diseasedRegions": result["diseased_regions"],
+            "detections": result["detections"],
+            "imageUrl": f"data:{file.content_type};base64,{base64.b64encode(contents).decode('ascii')}",
+            "inferenceMs": 0,
+        }
+    except Exception as error:
+        print(f"YOLO prediction error: {error}")
+        raise HTTPException(status_code=500, detail="YOLO prediction failed. Please try again.")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.post("/predict/cnn")
@@ -168,6 +199,7 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class ChatRequest(BaseModel):
     message: str
+    context: dict | None = None
 
 
 @app.post("/chat")
@@ -180,9 +212,16 @@ def chat(request: ChatRequest):
 
     print("Sending request to Gemini...")
     try:
+        context_text = ""
+        if request.context:
+            context_text = (
+                "\n\nThe user is asking about this latest plant analysis result. "
+                f"Use it as factual context:\n{request.context}"
+            )
+
         response = client.models.generate_content(
             model="gemini-3.1-flash-lite",
-            contents=request.message.strip(),
+            contents=f"User question: {request.message.strip()}{context_text}",
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_MESSAGE_PATH.read_text(encoding="utf-8"),
                 temperature=0.2,

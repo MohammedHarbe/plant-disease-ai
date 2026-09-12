@@ -30,11 +30,11 @@ export async function predictCnn(imageUrl:string):Promise<CnnResult>{
   return await response.json();
 }
 
-export async function askPlantAI(question:string):Promise<string>{
+export async function askPlantAI(question:string,context?:Record<string,unknown>):Promise<string>{
   const response=await fetch(`${API_URL}/chat`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({message:question}),
+    body:JSON.stringify({message:question,context}),
   });
   const body=await response.json().catch(()=>null);
   if(!response.ok){
