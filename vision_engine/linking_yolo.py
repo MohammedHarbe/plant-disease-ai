@@ -182,11 +182,11 @@ def predict_yolo(image_path: str) -> dict:
 
     if detections:
         top_detection = detections[0]
-        plant = top_detection.pop("_plant")
+        plant = top_detection["_plant"]
         disease = (
             "Healthy"
             if top_detection["status"] == "healthy"
-            else top_detection.pop("_disease")
+            else top_detection["_disease"]
         )
         confidence = top_detection["confidence"]
         severity = "Unknown"
@@ -195,6 +195,10 @@ def predict_yolo(image_path: str) -> dict:
         disease = "No detections"
         confidence = 0.0
         severity = "None"
+
+    for detection in detections:
+        detection.pop("_plant", None)
+        detection.pop("_disease", None)
 
     return {
         "plant": plant,
