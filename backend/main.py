@@ -97,6 +97,8 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 #     """
 #     pass
 
+SYSTEM_MESSAGE_PATH = "system_message.txt"
+
 @app.get("/predict/yolo")
 def test_yolo():
     """Test endpoint for YOLO prediction."""
@@ -181,13 +183,7 @@ def chat(request: ChatRequest):
         model="gemini-3.1-flash-lite",
         contents=request.message,
         config=types.GenerateContentConfig(
-            system_instruction="""
-You are a plant care expert.
-Answer only plant-related questions.
-Do not answer unrelated topics.
-Keep replies short, practical, and helpful.
-If the user asks something unrelated, say: "I'm sorry, I can only provide plant care advice."
-""",
+            system_instruction=SYSTEM_MESSAGE_PATH ,
             temperature=0.2,
             max_output_tokens=200,
         )
