@@ -2,20 +2,20 @@ import {useState} from 'react';
 import {Bot, Leaf, RotateCcw, Send, Sparkles} from 'lucide-react';
 import AssistantResponse from '../components/AssistantResponse';
 import {askPlantAI} from '../services/api';
+import {readStoredAnalysis} from '../services/analysisStore';
 
 interface Msg { role: 'user' | 'assistant'; text: string }
 
 export default function Assistant() {
-  const storedResult = sessionStorage.getItem('plantai:lastResult');
-  let analysisContext: Record<string, unknown> | undefined;
-  try {
-    const parsed = storedResult ? JSON.parse(storedResult) : null;
-    if (parsed?.result) analysisContext = {model: parsed.model, ...parsed.result};
-  } catch {
-    analysisContext = undefined;
-  }
+  const stored=readStoredAnalysis();
+  const currentModel=stored.lastModel;
+  const currentResult=currentModel==='yolo'?stored.yolo:currentModel==='cnn'?stored.cnn:stored.yolo||stored.cnn;
+  const analysisContext=currentResult?{model:currentModel||'current',...currentResult}:undefined;
+  const initialGreeting=analysisContext
+    ? `Hi! I’m PlantAI, your plant health assistant. I can explain your ${String(analysisContext.plant)} ${String(analysisContext.disease)} result, treatment options, prevention, or watering routines.`
+    : 'Hi! I’m PlantAI, your plant health assistant. Ask me about plant disease symptoms, treatment options, prevention, or watering routines.';
 
-  const [messages, setMessages] = useState<Msg[]>([{role: 'assistant', text: 'Hi! I’m PlantAI, your plant health assistant. I can explain your Tomato Early Blight result, treatment options, prevention, or watering routines.'}]);
+  const [messages, setMessages] = useState<Msg[]>([{role: 'assistant', text: initialGreeting}]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
 

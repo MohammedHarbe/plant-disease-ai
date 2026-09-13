@@ -10,10 +10,17 @@ import tempfile
 import base64
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*_args, **_kwargs):
+        return False
+
 # Add the repository and assistant subsystem to the import path.
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "ai-assistant"))
+load_dotenv(dotenv_path=project_root / ".env")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,8 +39,6 @@ except ImportError as e:
     print(f"Warning: Could not import predict_cnn: {e}")
     predict_cnn = None
 
-from gemini_client import generate_response
-
 # Create FastAPI application
 app = FastAPI(
     title="Plant Disease AI Backend",
@@ -44,26 +49,22 @@ app = FastAPI(
 # ============================================================================
 # CORS
 # ============================================================================
-# The React/Vite frontend (frontend/plantai/plantai) runs on its own dev
-# server (Vite's default port 5173), separate from this FastAPI process
-# (uvicorn, default port 8000). Browsers block cross-origin fetch() calls
-# by default ("CORS" = Cross-Origin Resource Sharing), so without this
-# middleware the browser would reject every request api.ts makes to
-# http://127.0.0.1:8000 from a page served on http://localhost:5173, even
-# though the request itself would have worked fine. We list the exact
-# Vite dev origins (from vite.config.ts, which uses Vite's default port)
-# instead of "*", since "*" would allow any website on the internet to call
-# this API from a user's browser.
+_DEV_FRONTEND_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
+]
+_configured_frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
+_allowed_origins = [*_DEV_FRONTEND_ORIGINS]
+if _configured_frontend_origin:
+    _allowed_origins.append(_configured_frontend_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-    ],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -71,6 +72,21 @@ app.add_middleware(
 
 # Only image types the CNN pipeline (PIL) can reliably decode.
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+
+async def _read_image_upload(file: UploadFile) -> bytes:
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image (jpeg, png, webp, or bmp).")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded image is too large. Maximum size is 10 MB.")
+
+    return contents
 
 
 @app.post("/predict/yolo")
@@ -79,12 +95,7 @@ async def predict_yolo_endpoint(file: UploadFile = File(...)) -> dict:
     if predict_yolo is None:
         raise HTTPException(status_code=503, detail="YOLO model is not available on the server.")
 
-    if file.content_type not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=400, detail="Uploaded file must be an image (jpeg, png, webp, or bmp).")
-
-    contents = await file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    contents = await _read_image_upload(file)
 
     suffix = Path(file.filename or "").suffix or ".jpg"
     tmp_path = None
@@ -130,15 +141,7 @@ async def predict_cnn_endpoint(file: UploadFile = File(...)) -> dict:
     if predict_cnn is None:
         raise HTTPException(status_code=503, detail="CNN model is not available on the server.")
 
-    if file.content_type not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file must be an image (jpeg, png, webp, or bmp).",
-        )
-
-    contents = await file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    contents = await _read_image_upload(file)
 
     suffix = Path(file.filename or "").suffix or ".jpg"
     tmp_path = None
@@ -182,7 +185,10 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     try:
+        from gemini_client import generate_response
         answer = generate_response(request.message.strip(), request.context)
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error))
     except Exception:
         raise HTTPException(status_code=502, detail="The AI assistant is temporarily unavailable.")
 

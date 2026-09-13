@@ -9,11 +9,15 @@ __pycache__/
 
 # Frontend
 node_modules/
+dist/
 frontend/**/dist/
 
-# Temporary test images
-test/_test_green.jpg
-test/test_image.jpg
+# Temporary upload files
+uploads/
+tmp_uploads/
+temp_uploads/
+*.upload
+*.tmp
 
 # Local model and editor files
 .vscode/
