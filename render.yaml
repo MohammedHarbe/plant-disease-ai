@@ -1,3 +1,5 @@
+# Optional backend-only Render blueprint.
+# The frontend is configured for Vercel in frontend/plantai/plantai/vercel.json.
 services:
   - type: web
     name: plantai-api
@@ -13,17 +15,3 @@ services:
         sync: false
       - key: PYTHON_VERSION
         value: 3.11.9
-
-  - type: web
-    name: plantai-web
-    runtime: static
-    rootDir: frontend/plantai/plantai
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        sync: false

@@ -24,18 +24,27 @@ YOLO inference: `vision_engine/linking_yolo.py`
 
 CNN inference: `vision_engine/linking_cnn.py`
 
-## Deploy On Render
+## Deploy Frontend On Vercel
 
-This repo includes a root-level `render.yaml` blueprint with:
+Deploy the React/Vite frontend as a Vercel project.
 
-- Backend Web Service: `plantai-api`
-- Frontend Static Site: `plantai-web`
+Vercel settings:
 
-### Backend
+```text
+Framework Preset: Vite
+Root Directory: frontend/plantai/plantai
+Build Command: npm run build
+Output Directory: dist
+Environment Variable: VITE_API_URL=https://your-backend-url
+```
 
-Service type: Render Web Service
+The frontend uses React Router, so `frontend/plantai/plantai/vercel.json` rewrites all routes to `index.html`. Refreshing routes such as `/analyze`, `/results/yolo`, `/compare`, `/assistant`, and `/history` should work on Vercel.
 
-Root directory: repository root
+`VITE_API_URL` should point to the deployed FastAPI backend. Do not put `API_KEY` or any other backend secret in Vercel frontend variables.
+
+## Backend Hosting
+
+Keep the FastAPI backend as a separate web service on Render or another backend host.
 
 Build command:
 
@@ -59,54 +68,19 @@ Required backend environment variables:
 
 ```text
 API_KEY=your Gemini API key
-FRONTEND_ORIGIN=https://your-frontend.onrender.com
-PYTHON_VERSION=3.11.9
+FRONTEND_ORIGIN=https://your-vercel-domain.vercel.app
 ```
 
-`API_KEY` belongs only on the backend service. Do not expose it through `VITE_*` variables or frontend code.
+`API_KEY` belongs only on the backend service. The backend CORS configuration allows localhost development origins and the single production origin from `FRONTEND_ORIGIN`.
 
-### Frontend
-
-Service type: Render Static Site
-
-Root directory:
-
-```text
-frontend/plantai/plantai
-```
-
-Build command:
-
-```bash
-npm install && npm run build
-```
-
-Publish directory:
-
-```text
-dist
-```
-
-Required frontend environment variable:
-
-```text
-VITE_API_URL=https://your-backend.onrender.com
-```
-
-The blueprint also configures React Router SPA refresh support with:
-
-```text
-/* -> /index.html
-```
+The root `render.yaml` is now backend-only and can be used later if you choose Render for the API service. The frontend should be deployed from Vercel.
 
 ### Deployment Order
 
-1. Deploy the backend service.
-2. Copy the backend Render URL.
-3. Set the frontend `VITE_API_URL` to the backend URL.
-4. Deploy the frontend static site.
-5. Copy the frontend Render URL.
-6. Set the backend `FRONTEND_ORIGIN` to the frontend URL.
-7. Redeploy the backend so production CORS uses the final frontend origin.
-
-The blueprint creates the service shapes, but you still need to set real Render URLs and the real backend-only `API_KEY` in Render.
+1. Deploy the backend service on your chosen backend host.
+2. Copy the backend URL.
+3. In Vercel, set frontend `VITE_API_URL` to the backend URL.
+4. Deploy the frontend on Vercel.
+5. Copy the Vercel frontend URL.
+6. Set backend `FRONTEND_ORIGIN` to the Vercel URL, for example `https://plantai.vercel.app`.
+7. Redeploy or restart the backend so production CORS uses the final Vercel origin.
