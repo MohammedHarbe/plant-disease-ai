@@ -189,8 +189,12 @@ def chat(request: ChatRequest):
         answer = generate_response(request.message.strip(), request.context)
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error))
-    except Exception:
-        raise HTTPException(status_code=502, detail="The AI assistant is temporarily unavailable.")
+    except Exception as error:
+        print(f"Gemini error: {type(error).__name__}: {error}")
+        raise HTTPException(
+            status_code=502,
+            detail="The AI assistant is temporarily unavailable."
+        )
 
     return {"response": answer}
 
