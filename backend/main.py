@@ -57,7 +57,7 @@ _DEV_FRONTEND_ORIGINS = [
     "http://localhost:5175",
     "http://127.0.0.1:5175",
 ]
-_configured_frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
+_configured_frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip().rstrip("/")
 _allowed_origins = [*_DEV_FRONTEND_ORIGINS]
 if _configured_frontend_origin:
     _allowed_origins.append(_configured_frontend_origin)
