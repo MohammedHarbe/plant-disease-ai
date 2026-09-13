@@ -1,27 +1,59 @@
+import {useEffect,useMemo,useState} from 'react';
 import {BarChart3,GitCompare,Info,Sparkles} from 'lucide-react';
 import {Link} from 'react-router-dom';
-import {cnnDemo} from '../data/mock';
 import Confidence from '../components/Confidence';
-import type {YoloResult} from '../types';
+import {predictCnn,predictYolo} from '../services/api';
+import {readStoredAnalysis,saveAnalysisResult} from '../services/analysisStore';
+import type {StoredAnalysisResults} from '../types';
 import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,Tooltip,CartesianGrid} from 'recharts';
 
 export default function Compare(){
-  const stored=sessionStorage.getItem('plantai:lastResult');
-  let yolo:YoloResult|null=null;
-  try{
-    const parsed=stored?JSON.parse(stored):null;
-    if(parsed?.model==='yolo'&&parsed.result)yolo=parsed.result as YoloResult;
-  }catch{
-    yolo=null;
-  }
+  const [analysis,setAnalysis]=useState<StoredAnalysisResults>(()=>readStoredAnalysis());
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState('');
+  const imageUrl=analysis.imageUrl||analysis.yolo?.imageUrl||analysis.cnn?.imageUrl;
 
-  if(!yolo)return <div className="grid min-h-[420px] place-items-center p-8 text-center"><div><div className="font-display text-2xl font-extrabold">Run a YOLO analysis first</div><p className="mt-2 text-sm text-[#7b887e]">The comparison uses the latest connected YOLO result and cannot show placeholder detections.</p><Link to="/analyze" className="btn-primary mt-5 inline-flex">Start analysis</Link></div></div>;
+  useEffect(()=>{
+    if(!imageUrl||(analysis.yolo&&analysis.cnn))return;
+    const sourceImage=imageUrl;
 
-  const cnn=cnnDemo;
-  const metrics=[
+    let ignore=false;
+    async function loadMissingResults(){
+      setLoading(true);
+      setError('');
+      try{
+        if(!analysis.yolo){
+          const yoloResult=await predictYolo(sourceImage);
+          saveAnalysisResult('yolo',yoloResult,sourceImage);
+        }
+        if(!analysis.cnn){
+          const cnnResult=await predictCnn(sourceImage);
+          saveAnalysisResult('cnn',cnnResult,sourceImage);
+        }
+        if(!ignore)setAnalysis(readStoredAnalysis());
+      }catch{
+        if(!ignore)setError('Could not run both models for comparison. Please try again.');
+      }finally{
+        if(!ignore)setLoading(false);
+      }
+    }
+
+    void loadMissingResults();
+    return ()=>{ignore=true;};
+  },[imageUrl,analysis.yolo,analysis.cnn]);
+
+  const yolo=analysis.yolo;
+  const cnn=analysis.cnn;
+  const metrics=useMemo(()=>yolo&&cnn?[
     {name:'Confidence',YOLO:yolo.confidence*100,CNN:cnn.confidence*100},
     {name:'Inference (ms)',YOLO:yolo.inferenceMs,CNN:cnn.inferenceMs},
-  ];
+  ]:[],[yolo,cnn]);
+
+  if(!imageUrl)return <EmptyState title="Run an analysis first" text="Upload an image so PlantAI can compare real YOLO and CNN results."/>;
+  if(loading&&(!yolo||!cnn))return <EmptyState title="Running comparison" text="PlantAI is running the missing model on your original uploaded image."/>;
+  if(error&&(!yolo||!cnn))return <EmptyState title="Comparison unavailable" text={error}/>;
+  if(!yolo||!cnn)return <EmptyState title="Run both models first" text="The comparison page only displays real YOLO and CNN outputs."/>;
+
   const confidence=(yolo.confidence*100).toFixed(1);
   const cnnConfidence=(cnn.confidence*100).toFixed(1);
 
@@ -29,13 +61,12 @@ export default function Compare(){
     <div className="mb-7">
       <div className="pill border-[#dbe8d6] bg-white text-[#58775d]"><GitCompare size={13}/>Latest connected scan</div>
       <h1 className="mt-4 font-display text-3xl font-extrabold">YOLO vs CNN</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7b887f]">Compare the latest real YOLO detection with the current CNN baseline for the same analysis workflow.</p>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7b887f]">Compare real outputs from both connected models for the same original uploaded image.</p>
     </div>
     <div className="card overflow-hidden p-4">
-      <div className="relative overflow-hidden rounded-[25px]">
-        <img src={yolo.imageUrl} alt="Latest plant scan" className="h-[270px] w-full object-cover"/>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#102719]/70 to-transparent"/>
-        <div className="absolute bottom-5 left-5 text-white">
+      <div className="relative flex h-[270px] items-center justify-center overflow-hidden rounded-[25px] bg-[#f5f7f2]">
+        <img src={imageUrl} alt="Latest plant scan" className="block h-auto max-h-full w-auto max-w-full object-contain object-center"/>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#102719]/70 to-transparent p-5 text-white">
           <div className="text-xs font-bold uppercase tracking-widest text-white/60">Same input image</div>
           <div className="mt-1 font-display text-xl font-extrabold">{yolo.plant} scan</div>
         </div>
@@ -43,13 +74,13 @@ export default function Compare(){
     </div>
     <div className="mt-6 grid gap-5 lg:grid-cols-2">
       <ModelCard name="YOLO" subtitle="Detection + Classification" confidence={yolo.confidence} disease={yolo.disease} details={`Detected ${yolo.objectsDetected} localized regions`} color="bg-[#173b27]"/>
-      <ModelCard name="Pre-trained CNN" subtitle="Image Classification" confidence={cnn.confidence} disease={cnn.disease} details="Current CNN baseline" color="bg-[#486b4f]"/>
+      <ModelCard name="Pre-trained CNN" subtitle="Image Classification" confidence={cnn.confidence} disease={cnn.disease} details="Top prediction for the full image" color="bg-[#486b4f]"/>
     </div>
     <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_430px]">
       <div className="card overflow-hidden">
         <div className="border-b border-[#edf1eb] p-6">
           <h2 className="font-display text-xl font-extrabold">Comparison table</h2>
-          <p className="mt-1 text-xs text-[#869188]">YOLO confidence and latency come from the latest connected scan.</p>
+          <p className="mt-1 text-xs text-[#869188]">Both values come from live backend predictions for the same upload.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -59,7 +90,7 @@ export default function Compare(){
               <Row a="Confidence" b={`${confidence}%`} c={`${cnnConfidence}%`}/>
               <Row a="Inference Time" b={`${yolo.inferenceMs} ms`} c={`${cnn.inferenceMs} ms`}/>
               <Row a="Model Type" b="YOLO vision detector" c="Pre-trained CNN"/>
-              <Row a="Accuracy" b="Not returned by detector" c="Not returned by classifier"/>
+              <Row a="Accuracy" b="Requires evaluation data" c="Requires evaluation data"/>
               <Row a="Precision" b="Requires evaluation data" c="Requires evaluation data"/>
               <Row a="Recall" b="Requires evaluation data" c="Requires evaluation data"/>
               <Row a="F1 / mAP" b="Requires evaluation data" c="Requires evaluation data"/>
@@ -69,7 +100,7 @@ export default function Compare(){
       </div>
       <div className="card p-6">
         <div className="flex items-start justify-between">
-          <div><h2 className="font-display text-lg font-extrabold">Visual benchmark</h2><p className="mt-1 text-xs text-[#849087]">Confidence and latency for the latest scan and CNN baseline.</p></div>
+          <div><h2 className="font-display text-lg font-extrabold">Visual benchmark</h2><p className="mt-1 text-xs text-[#849087]">Confidence and latency from real predictions.</p></div>
           <BarChart3 className="text-[#668b6b]" size={20}/>
         </div>
         <div className="mt-6 h-[280px]">
@@ -94,6 +125,10 @@ export default function Compare(){
       </div>
     </div>
   </div>;
+}
+
+function EmptyState({title,text}:{title:string;text:string}){
+  return <div className="grid min-h-[420px] place-items-center p-8 text-center"><div><div className="font-display text-2xl font-extrabold">{title}</div><p className="mt-2 text-sm text-[#7b887e]">{text}</p><Link to="/analyze" className="btn-primary mt-5 inline-flex">Start analysis</Link></div></div>;
 }
 
 function ModelCard({name,subtitle,confidence,disease,details,color}:{name:string;subtitle:string;confidence:number;disease:string;details:string;color:string}){

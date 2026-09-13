@@ -42,6 +42,8 @@ def test_yolo_accepts_real_image():
     assert response.status_code == 200
     body = response.json()
     assert body["detection_count"] == len(body["detections"])
+    assert body["image_width"] > 0
+    assert body["image_height"] > 0
     assert body["inference_time_ms"] >= 0
     assert body["imageUrl"].startswith("data:image/jpeg;base64,")
 

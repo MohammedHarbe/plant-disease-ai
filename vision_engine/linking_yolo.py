@@ -205,6 +205,8 @@ def predict_yolo(image_path: str) -> dict:
         "disease": disease,
         "confidence": confidence,
         "severity": severity,
+        "image_width": int(image_width),
+        "image_height": int(image_height),
         "objects_detected": len(detections),
         "healthy_regions": healthy_regions,
         "diseased_regions": diseased_regions,
