@@ -49,26 +49,23 @@ app = FastAPI(
 # ============================================================================
 # CORS
 # ============================================================================
-_DEV_FRONTEND_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost:5175",
-    "http://127.0.0.1:5175",
-]
-_configured_frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip().rstrip("/")
-_allowed_origins = [*_DEV_FRONTEND_ORIGINS]
-if _configured_frontend_origin:
-    _allowed_origins.append(_configured_frontend_origin)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+
+        # Stable production domain
+        "https://plant-disease-ai-1.vercel.app",
+
+        # Current Vercel deployment URL
+        "https://plant-disease-ai-1-9tcq8m3is-mohammedharbe.vercel.app",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Only image types the CNN pipeline (PIL) can reliably decode.
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
